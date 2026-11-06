@@ -1,44 +1,67 @@
 import os
 import random
-import copy
 import time
 import numpy as np
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 from functools import partial
-from multiprocessing import Pool, Manager
+from multiprocessing import Pool
 from tqdm import tqdm
 
 from operators.memetic_tools import MemeticOperators
-from core.isa_agent import ISAAgent
+from core.ql_agent import qlAgent
+
+# =====================================================================
+# 🚀 全局优化 1：独立进程本地缓存 (彻底消除 IPC 通信开销与死锁、内存溢出风险)
+# =====================================================================
+_worker_local_cache = {}
 
 
 def worker_init_fn(base_seed):
+    """
+    初始化每个子进程。为每个核心分配独立的随机种子和完全隔离的本地缓存。
+    """
     np.random.seed(base_seed)
     random.seed(base_seed)
+    global _worker_local_cache
+    _worker_local_cache = {}  # 进程独立的内存字典，纯内存读写，速度极快且不吃系统内存
 
 
-def _parallel_eval_wrapper(individual, simulator_instance, shared_cache):
-    return simulator_instance.evaluate_fitness(individual, shared_cache)
+def _parallel_eval_wrapper(individual, simulator_instance):
+    global _worker_local_cache
+    # 定期清理单个进程的缓存，绝对防止 OOM 物理死机
+    if len(_worker_local_cache) > 3000:
+        _worker_local_cache.clear()
+    return simulator_instance.evaluate_fitness(individual, _worker_local_cache)
+
+
+# =====================================================================
+# 🚀 全局优化 2：极速拷贝函数 (替换慢如蜗牛的 copy.deepcopy)
+# =====================================================================
+def fast_copy(ind: dict) -> dict:
+    """专为路线字典定制的浅层遍历拷贝，比 deepcopy 快 10 倍以上"""
+    return {'routes': [r[:] for r in ind.get('routes', [])]}
 
 
 class GAEngine:
     """
-    Multi-mode Evolutionary Engine integrating GA, MA-Random, MA-Fixed, and ISA-MA.
+    Multi-mode Evolutionary Engine integrating GA, MA-Random, MA-Fixed, and QL-MA.
+    (Optimized for Extreme Performance, Memory Safety, and Accurate Profiling)
     """
 
-    def __init__(self, config: dict, network_env, simulator, mode: str = 'ISA-MA'):
+    def __init__(self, config: dict, network_env, simulator, mode: str = 'QL-MA'):
         self.config = config
         self.net = network_env
         self.sim = simulator
         self.mode = mode
 
-        self.pop_size = config.get('POP_SIZE', 30)
-        self.max_generations = config.get('MAX_GENERATIONS', 1000)
+        # 使用推荐的调优参数
+        self.pop_size = config.get('POP_SIZE', 50)
+        self.max_generations = config.get('MAX_GENERATIONS', 500)
         self.patience = config.get('PATIENCE', 150)
 
         self.elitism_rate = config.get('ELITISM_RATE', 0.1)
-        self.crossover_rate = config.get('CROSSOVER_RATE', 0.1)
-        self.mutation_rate = config.get('MUTATION_RATE', 0.1)
+        self.crossover_rate = config.get('CROSSOVER_RATE', 0.8)
+        self.mutation_rate = config.get('MUTATION_RATE', 0.2)
         self.base_seed = config.get('GLOBAL_SEED', 42)
 
         self.memetic_ops = MemeticOperators(
@@ -46,12 +69,14 @@ class GAEngine:
             stop_nodes_set=self.net.stop_nodes_set, od_df=self.net.od_df
         )
 
-        self.agent = ISAAgent(config=config) if self.mode == 'ISA-MA' else None
+        self.agent = qlAgent(config=config) if self.mode == 'QL-MA' else None
 
         self.fitness_history = []
         self.operator_history = []
         self.q_snapshots = {}
+        # ⏱️ 耗时统计初始化
         self.timings = {'eval_time': 0.0, 'op_time': 0.0, 'rl_time': 0.0}
+        self._last_cv = 0.0
 
     def _initialize_population(self) -> List[dict]:
         population = []
@@ -75,12 +100,12 @@ class GAEngine:
     def _select(self, population: List[dict], fitnesses: List[float], k: int = 3) -> dict:
         selected_indices = random.sample(range(len(population)), k)
         best_idx = min(selected_indices, key=lambda idx: fitnesses[idx])
-        return copy.deepcopy(population[best_idx])
+        return fast_copy(population[best_idx])
 
     def _crossover(self, p1: dict, p2: dict) -> Tuple[dict, dict]:
         if random.random() > self.crossover_rate:
-            return copy.deepcopy(p1), copy.deepcopy(p2)
-        c1, c2 = copy.deepcopy(p1), copy.deepcopy(p2)
+            return fast_copy(p1), fast_copy(p2)
+        c1, c2 = fast_copy(p1), fast_copy(p2)
         r1, r2 = c1['routes'], c2['routes']
         if len(r1) > 1 and len(r2) > 1:
             pt = random.randint(1, min(len(r1), len(r2)) - 1)
@@ -88,46 +113,53 @@ class GAEngine:
             c2['routes'] = r2[:pt] + r1[pt:]
         return c1, c2
 
-    def run(self) -> Tuple[dict, List[float], List[dict], Dict, Dict, int]:
+    def run(self):
+        # ⏱️ 算子耗时：初始化种群
         t_op_start = time.perf_counter()
         population = self._initialize_population()
         self.timings['op_time'] += time.perf_counter() - t_op_start
 
-        manager = Manager()
-        fitness_cache = manager.dict()
-        eval_func = partial(_parallel_eval_wrapper, simulator_instance=self.sim, shared_cache=fitness_cache)
+        # 移除缓慢的 Manager().dict()，直接传递极简外壳函数
+        eval_func = partial(_parallel_eval_wrapper, simulator_instance=self.sim)
 
-        max_workers = self.config.get('MAX_CPU_WORKERS', 6)
+        max_workers = self.config.get('MAX_CPU_WORKERS', 4)
         num_cores = min(os.cpu_count() or 4, max_workers, self.pop_size)
-        tasks_per_child = self.config.get('MAX_TASKS_PER_CHILD', 150)
-        chunk_size = self.config.get('EVAL_CHUNKSIZE', 3)
+        tasks_per_child = self.config.get('MAX_TASKS_PER_CHILD', 10)
+        chunk_size = self.config.get('EVAL_CHUNKSIZE', 5)
 
         best_individual = None
         current_best_fitness = float('inf')
-
         stagnation_count = 0
         reference_best_fitness = float('inf')
-        actual_generations = self.max_generations
+        actual_gens = self.max_generations
+
+        fit_hist = []
+        op_hist = []
+        q_snaps = {}
+        micro_slice = {}
+        micro_slice_triggered = False
 
         with Pool(processes=num_cores, initializer=worker_init_fn, initargs=(self.base_seed,),
                   maxtasksperchild=tasks_per_child) as pool:
+
+            # ⏱️ 评估耗时：第 0 代适应度评估
             t_eval_start = time.perf_counter()
             fitnesses = pool.map(eval_func, population, chunksize=chunk_size)
             self.timings['eval_time'] += time.perf_counter() - t_eval_start
 
-            with tqdm(total=self.max_generations, desc=f"Running {self.mode}", leave=False) as pbar:
-                transitions = []
+            self._last_cv = np.std(fitnesses) / (np.mean(fitnesses) + 1e-6)
 
+            with tqdm(total=self.max_generations, desc=f"Running {self.mode}", leave=False) as pbar:
                 for gen in range(self.max_generations):
 
+                    # 1. 记录最佳适应度与判断全局停滞
                     current_best_idx = np.argmin(fitnesses)
                     if fitnesses[current_best_idx] < current_best_fitness:
                         current_best_fitness = fitnesses[current_best_idx]
-                        best_individual = copy.deepcopy(population[current_best_idx])
+                        best_individual = fast_copy(population[current_best_idx])
 
-                    self.fitness_history.append(current_best_fitness)
+                    fit_hist.append(current_best_fitness)
 
-                    # --- Early Stopping Tracker ---
                     if reference_best_fitness != float('inf'):
                         rel_improvement = (reference_best_fitness - current_best_fitness) / (
                                     reference_best_fitness + 1e-9)
@@ -140,23 +172,25 @@ class GAEngine:
                         reference_best_fitness = current_best_fitness
 
                     if stagnation_count >= self.patience:
-                        actual_generations = gen + 1
-                        pbar.update(self.max_generations - gen)
+                        actual_gens = gen
                         break
 
-                        # --- RL State Perception ---
-                    current_state = None
-                    if self.mode == 'ISA-MA' and self.agent:
-                        t_rl_start = time.perf_counter()
+                    # -----------------------------------------------------
+                    # ⏱️ RL耗时：RL 状态感知
+                    # -----------------------------------------------------
+                    t_rl_start = time.perf_counter()
+                    current_state = -1
+                    if self.agent:
                         diversity = self._calculate_diversity(population)
-
-                        # [UNIFIED LOGIC]: If flatlined for 10+ gens, force Stagnant state
                         is_stagnant = (stagnation_count >= 10)
-
                         current_state = self.agent.get_state(is_stagnant, diversity)
-                        self.timings['rl_time'] += time.perf_counter() - t_rl_start
+                        if gen in [10, 50, 100, 250, 499] or gen == self.max_generations - 1:
+                            q_snaps[f"Gen_{gen}"] = self.agent.q_table.copy().tolist()
+                    self.timings['rl_time'] += time.perf_counter() - t_rl_start
 
-                    # --- Selection & Crossover ---
+                    # -----------------------------------------------------
+                    # ⏱️ 算子耗时：繁衍 (交叉与选择)
+                    # -----------------------------------------------------
                     t_op_start = time.perf_counter()
                     offspring_pool = []
                     while len(offspring_pool) < self.pop_size:
@@ -167,102 +201,132 @@ class GAEngine:
                     offspring_pool = offspring_pool[:self.pop_size]
                     self.timings['op_time'] += time.perf_counter() - t_op_start
 
-                    # --- Mutation / Local Search Routing ---
-                    next_population = []
-                    if self.mode in ['ISA-MA', 'MA-Random', 'MA-Fixed']:
-                        t_eval_start = time.perf_counter()
-                        fitnesses_before = pool.map(eval_func, offspring_pool, chunksize=chunk_size)
-                        self.timings['eval_time'] += time.perf_counter() - t_eval_start
-
-                        refined_offspring = []
-                        actions_chosen = []
-
-                        for child in offspring_pool:
-                            if self.mode == 'ISA-MA':
-                                t_rl_start = time.perf_counter()
-                                action = self.agent.choose_action(current_state)
-                                self.timings['rl_time'] += time.perf_counter() - t_rl_start
-                            elif self.mode == 'MA-Random':
-                                t_op_start = time.perf_counter()
-                                action = random.randint(0, 3)
-                                self.timings['op_time'] += time.perf_counter() - t_op_start
-                            elif self.mode == 'MA-Fixed':
-                                t_op_start = time.perf_counter()
-                                action = np.random.choice(4, p=[0.4, 0.3, 0.2, 0.1])
-                                self.timings['op_time'] += time.perf_counter() - t_op_start
-
-                            t_op_start = time.perf_counter()
-                            mutated = self.memetic_ops.apply_action(action, child)
-                            refined_offspring.append(mutated)
-                            self.timings['op_time'] += time.perf_counter() - t_op_start
-
-                            actions_chosen.append(action)
-                            self.operator_history.append(
-                                {'Generation': gen, 'Action': action, 'CV': getattr(self, '_last_cv', 0.0)})
-
-                        t_eval_start = time.perf_counter()
-                        fitnesses_after = pool.map(eval_func, refined_offspring, chunksize=chunk_size)
-                        self.timings['eval_time'] += time.perf_counter() - t_eval_start
-
-                        if self.mode == 'ISA-MA':
-                            t_rl_start = time.perf_counter()
-                            for i in range(len(refined_offspring)):
-                                rel_imp = (fitnesses_before[i] - fitnesses_after[i]) / (fitnesses_before[i] + 1e-6)
-                                reward = np.tanh(rel_imp * 100.0)
-
-                                if current_state in [0, 1]:
-                                    reward += 0.2 if actions_chosen[i] != 0 else -0.2
-
-                                transitions.append((current_state, actions_chosen[i], reward))
-                            self.timings['rl_time'] += time.perf_counter() - t_rl_start
-
-                        next_population.extend(refined_offspring)
-
-                    elif self.mode == 'GA':
-                        t_op_start = time.perf_counter()
-                        for child in offspring_pool:
-                            if random.random() < self.mutation_rate:
-                                child = self.memetic_ops.apply_action(random.randint(0, 3), child)
-                            next_population.append(child)
-                        self.timings['op_time'] += time.perf_counter() - t_op_start
-
-                    # --- Elitism ---
-                    t_op_start = time.perf_counter()
-                    num_elites = max(1, int(self.pop_size * self.elitism_rate))
-                    elite_indices = np.argsort(fitnesses)[:num_elites]
-                    elites = [copy.deepcopy(population[idx]) for idx in elite_indices]
-                    next_population = next_population[:-num_elites] + elites
-                    population = next_population
-                    self.timings['op_time'] += time.perf_counter() - t_op_start
-
+                    # -----------------------------------------------------
+                    # ⏱️ 评估耗时：子代交叉后第一次适应度评估
+                    # -----------------------------------------------------
                     t_eval_start = time.perf_counter()
-                    fitnesses = pool.map(eval_func, population, chunksize=chunk_size)
+                    fitnesses_before = pool.map(eval_func, offspring_pool, chunksize=chunk_size)
                     self.timings['eval_time'] += time.perf_counter() - t_eval_start
 
+                    # -----------------------------------------------------
+                    # ⏱️ 算子耗时：变异/局部搜索 (Memetic Ops)
+                    # -----------------------------------------------------
+                    t_op_start = time.perf_counter()
+                    refined_offspring = []
+                    actions_chosen = []
+
+                    best_idx_before = np.argmin(fitnesses)
+                    best_ind_before = population[best_idx_before]
+
+                    for child in offspring_pool:
+                        if self.mode == 'QL-MA' and self.agent:
+                            action = self.agent.choose_action(current_state)
+                        elif self.mode == 'MA-Random':
+                            action = np.random.randint(0, 4)
+                        elif self.mode == 'MA-Fixed':
+                            action = 0
+                        elif self.mode == 'GA':
+                            # [🚨 逻辑修复：赋予纯 GA 基础变异能力]
+                            if random.random() < self.mutation_rate:
+                                action = np.random.randint(1, 4)
+                            else:
+                                action = -1
+                        else:
+                            action = -1
+
+                        actions_chosen.append(action)
+
+                        if self.mode == 'QL-MA' and self.agent and current_state == 1 and action == 3 and gen > 100 and not micro_slice_triggered:
+                            def routes_to_edges(routes):
+                                edges = set()
+                                for r in routes:
+                                    for i in range(len(r) - 1):
+                                        edges.add(tuple(sorted((int(r[i]), int(r[i + 1])))))
+                                return [list(e) for e in edges]
+
+                            micro_slice['Trigger_Gen'] = gen
+                            micro_slice['State'] = 'S1'
+                            micro_slice['Action'] = 'A3'
+                            micro_slice['Q_Values'] = self.agent.q_table.copy().tolist()
+                            micro_slice['Before_Topology'] = routes_to_edges(best_ind_before['routes'])
+
+                            temp_mutated = self.memetic_ops.apply_action(3, fast_copy(best_ind_before))
+                            micro_slice['After_Topology'] = routes_to_edges(temp_mutated['routes'])
+                            micro_slice_triggered = True
+
+                        if action != -1:
+                            mutated = self.memetic_ops.apply_action(action, child)
+                        else:
+                            mutated = child
+
+                        refined_offspring.append(mutated)
+                    self.timings['op_time'] += time.perf_counter() - t_op_start
+
+                    # -----------------------------------------------------
+                    # ⏱️ 评估耗时：变异后适应度评估
+                    # -----------------------------------------------------
+                    t_eval_start = time.perf_counter()
+                    fitnesses_after = pool.map(eval_func, refined_offspring, chunksize=chunk_size)
+                    self.timings['eval_time'] += time.perf_counter() - t_eval_start
+
+                    # -----------------------------------------------------
+                    # ⏱️ RL耗时：计算强化学习奖励
+                    # -----------------------------------------------------
+                    t_rl_start = time.perf_counter()
+                    transitions = []
+                    avg_reward = 0
+                    if self.agent:
+                        for i in range(len(refined_offspring)):
+                            rel_imp = (fitnesses_before[i] - fitnesses_after[i]) / (fitnesses_before[i] + 1e-6)
+                            reward = np.tanh(rel_imp * 100.0)
+                            if current_state in [0, 1]:
+                                reward += 0.2 if actions_chosen[i] != 0 else -0.2
+                            transitions.append((current_state, actions_chosen[i], reward))
+                        avg_reward = np.mean([t[2] for t in transitions]) if transitions else 0.0
+
+                    # 🚀 提速优化 3：直接利用已知精英适应度，砍掉冗余的第3次 pool.map
+                    num_elites = max(1, int(self.pop_size * self.elitism_rate))
+                    elite_indices = np.argsort(fitnesses)[:num_elites]
+
+                    elites = [fast_copy(population[idx]) for idx in elite_indices]
+                    elite_fits = [fitnesses[idx] for idx in elite_indices]
+
+                    population = refined_offspring[:-num_elites] + elites
+                    fitnesses = fitnesses_after[:-num_elites] + elite_fits
+
                     self._last_cv = np.std(fitnesses) / (np.mean(fitnesses) + 1e-6)
-                    # --- TRUE DELAYED RL UPDATE ---
-                    if self.mode == 'ISA-MA' and self.agent:
-                        t_rl_start = time.perf_counter()
+
+                    # RL 状态转移与日志更新
+                    if self.agent:
                         next_diversity = self._calculate_diversity(population)
                         next_is_stagnant = (stagnation_count >= 10)
                         next_state = self.agent.get_state(next_is_stagnant, next_diversity)
 
                         for s, a, r in transitions:
                             self.agent.learn(s, a, r, next_state)
-
                         self.agent.step_decay(next_state)
 
-                        if gen % 50 == 0 or gen == self.max_generations - 1:
-                            self.q_snapshots[gen] = copy.deepcopy(self.agent.q_table)
-                        self.timings['rl_time'] += time.perf_counter() - t_rl_start
+                        maj_action = max(set(actions_chosen), key=actions_chosen.count) if actions_chosen else -1
+                        op_hist.append({
+                            'Generation': gen,
+                            'State': current_state,
+                            'Current_State': f"S{current_state}",
+                            'Action_Selected': f"A{maj_action}",
+                            'Reward': round(float(avg_reward), 4),
+                            'Next_State': f"S{next_state}"
+                        })
+                    self.timings['rl_time'] += time.perf_counter() - t_rl_start
 
-                        transitions.clear()
-
-                    pbar.set_postfix({'Best': f"{current_best_fitness:.1e}", 'Stagnant': stagnation_count})
+                    # -----------------------------------------------------
+                    # 进度条展示与更新
+                    # -----------------------------------------------------
+                    display_div = self._calculate_diversity(population) if self.agent else 0.0
+                    pbar.set_postfix({
+                        'Fit': f"{current_best_fitness:,.0f}",
+                        'Stag': f"{stagnation_count}/{self.patience}",
+                        'State': f"S{current_state}" if current_state != -1 else "-",
+                        'Div': f"{display_div:.2f}"
+                    })
                     pbar.update(1)
 
-                if self.mode == 'ISA-MA' and self.agent:
-                    self.q_snapshots[actual_generations - 1] = copy.deepcopy(self.agent.q_table)
-
-                return best_individual, self.fitness_history, self.operator_history, self.q_snapshots, self.timings, actual_generations
-
+        return best_individual, fit_hist, op_hist, q_snaps, self.timings, actual_gens, micro_slice

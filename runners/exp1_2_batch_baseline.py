@@ -32,7 +32,7 @@ class NumpyEncoder(json.JSONEncoder):
 
 def run_batch_experiment():
     networks = ['mandl', 'mumford0', 'mumford1']
-    modes = ['GA', 'MA-Random', 'MA-Fixed', 'ISA-MA']
+    modes = ['GA', 'MA-Random', 'MA-Fixed', 'QL-MA']
     num_seeds = 30
     max_gens = 1000
     patience = 150
@@ -128,7 +128,7 @@ def run_batch_experiment():
                         json.dump(best_ind, jf, cls=NumpyEncoder)  # [🚨 关键修改点 🚨]
 
                 # XAI Data Capture
-                if mode == 'ISA-MA' and q_snaps:
+                if mode == 'QL-MA' and q_snaps:
                     final_gen_key = max(q_snaps.keys()) if q_snaps else 0
                     final_q = q_snaps.get(final_gen_key, np.zeros((4, 4)))
                     np.save(os.path.join(xai_dir, f"QTable_{network}_Seed_{current_seed}.npy"), final_q)

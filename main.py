@@ -14,15 +14,15 @@ from core.ga_engine import GAEngine
 
 def main():
     """
-    Main entry point for the ISA-MA optimization framework.
+    Main entry point for the QL-MA optimization framework.
     Orchestrates the environment setup, evolutionary execution, and result visualization.
     """
     # 1. Parse Command Line Arguments
-    parser = argparse.ArgumentParser(description="ISA-MA Framework for Transit Network Design")
+    parser = argparse.ArgumentParser(description="QL-MA Framework for Transit Network Design")
     parser.add_argument('--network', type=str, default='mandl', choices=['mandl', 'mumford0', 'mumford1'],
                         help='Benchmark network to optimize (default: mandl)')
-    parser.add_argument('--mode', type=str, default='ISA-MA', choices=['GA', 'MA-Random', 'MA-Fixed', 'ISA-MA'],
-                        help='Optimization mode (default: ISA-MA)')
+    parser.add_argument('--mode', type=str, default='QL-MA', choices=['GA', 'MA-Random', 'MA-Fixed', 'QL-MA'],
+                        help='Optimization mode (default: QL-MA)')
     parser.add_argument('--output_dir', type=str, default='./output',
                         help='Directory to save visualization results (default: ./output)')
     args = parser.parse_args()
@@ -42,7 +42,7 @@ def main():
 
     output_path = os.path.join(args.output_dir, args.network, args.mode)
     print("=" * 60)
-    print(f"= ISA-MA Project Execution Started")
+    print(f"= QL-MA Project Execution Started")
     print(f"= Network: {args.network.upper()} | Mode: {args.mode}")
     print(f"= Global Seed: {global_config['GLOBAL_SEED']}")
     print("=" * 60 + "\n")
@@ -102,7 +102,7 @@ def main():
             print("\n⏱️ Computational Overhead:")
             print(f"  - Evaluation Time:  {timings['eval_time']:,.2f} s")
             print(f"  - Memetic Ops Time: {timings['op_time']:,.2f} s")
-            if args.mode == 'ISA-MA':
+            if args.mode == 'QL-MA':
                 print(f"  - RL Agent Time:    {timings['rl_time']:,.2f} s")
             print("=" * 60 + "\n")
 
@@ -112,7 +112,7 @@ def main():
             # Plot the Dual-View Fitness Evolution Curve
             viz.plot_fitness_evolution(fitness_history, filename=f"fitness_{args.network}_{args.mode}.png")
 
-            if args.mode == 'ISA-MA':
+            if args.mode == 'QL-MA':
                 action_names = ['Action 0: Exploiter', 'Action 1: Recombiner', 'Action 2: Reformer',
                                 'Action 3: Explorer']
                 state_names = ['Stagnant & Div-H', 'Stagnant & Div-L', 'Converged & Div-H', 'Converged & Div-L']

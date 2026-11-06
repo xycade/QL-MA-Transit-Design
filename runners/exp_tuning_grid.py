@@ -1,0 +1,193 @@
+import os
+import sys
+import time
+import itertools
+import gc
+import pandas as pd
+import numpy as np
+from multiprocessing import freeze_support
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from configs.default_config import CONFIG, NETWORK_CONFIGS
+from utils.seed_manager import seed_everything
+from envs.network_env import TransitNetwork
+from envs.passenger_sim import PassengerSimulator
+from core.ga_engine import GAEngine
+
+
+def run_grid_search():
+    # ==========================================
+    # 🚀 极速调参实验配置 (侦察战模式)
+    # ==========================================
+    network = 'mumford0'
+    num_seeds = 2  # [提速] 从 3 降为 2，足以评估均值趋势
+    max_gens = 100  # [提速] 前 100 代足以看出参数潜力，无需跑到底
+    patience = 30  # [提速] 30代不下降直接淘汰这组参数
+
+    output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'output', 'exp_tuning'))
+    os.makedirs(output_dir, exist_ok=True)
+
+    ma_results_file = os.path.join(output_dir, "Tuning_Stage1_MA.csv")
+    rl_results_file = os.path.join(output_dir, "Tuning_Stage2_RL.csv")
+
+    base_config = CONFIG.copy()
+
+    base_config['MAX_GENERATIONS'] = max_gens
+    base_config['PATIENCE'] = patience
+
+    base_config['MAX_CPU_WORKERS'] = 5
+    base_config['MAX_TASKS_PER_CHILD'] = 5
+    base_config['EVAL_CHUNKSIZE'] = 5
+
+    net_config = NETWORK_CONFIGS[network]
+    base_config.update({
+        'BASE_PATH': net_config['path'], 'NUM_ROUTES': net_config['num_routes'],
+        'MAX_TOTAL_FLEET': net_config['max_fleet'], 'MAX_STOPS_PER_ROUTE': net_config['max_stops'],
+        'MIN_STOPS_PER_ROUTE': net_config['min_stops']
+    })
+
+    # 网络环境只初始化一次，避免重复加载消耗内存
+    network_env = TransitNetwork(base_path=base_config['BASE_PATH'])
+
+    # ==========================================
+    # Stage 1: MA 参数调优
+    # ==========================================
+    ma_grid = {
+        'POP_SIZE': [30, 50, 80],
+        'CROSSOVER_RATE': [0.7, 0.8, 0.9],
+        'MUTATION_RATE': [0.1, 0.2, 0.3]  # 🚨 完整保留 27 个组合
+    }
+
+    ma_keys = list(ma_grid.keys())
+    ma_combinations = list(itertools.product(*(ma_grid[k] for k in ma_keys)))
+
+    print("=" * 70)
+    print(f"🚀 STAGE 1: RAPID MA Parameter Tuning | {len(ma_combinations)} Combinations")
+    print(f"⚙️  Settings: Max Gens = {max_gens}, Patience = {patience}, Seeds = {num_seeds}")
+    print("=" * 70)
+
+    ma_results = []
+
+    for idx, combo in enumerate(ma_combinations):
+        current_config = base_config.copy()
+        for k, v in zip(ma_keys, combo):
+            current_config[k] = v
+
+        print(f"\n[MA {idx + 1}/{len(ma_combinations)}] Testing: {dict(zip(ma_keys, combo))}")
+
+        combo_fitness = []
+        for seed in range(1, num_seeds + 1):
+            seed_everything(42 + seed)
+            current_config['GLOBAL_SEED'] = 42 + seed
+
+            simulator = PassengerSimulator(network_env=network_env, config=current_config)
+            engine = GAEngine(config=current_config, network_env=network_env, simulator=simulator, mode='MA-Random')
+
+            best_ind, _, _, _, _, _, _ = engine.run()
+
+            if best_ind:
+                best_ind['frequencies'] = simulator.calculate_demand_responsive_frequencies(best_ind)
+                metrics = simulator.calculate_performance_metrics(simulator._prepare_network_data(best_ind))
+                combo_fitness.append(metrics['fitness'])
+
+            del simulator
+            del engine
+            gc.collect()
+            time.sleep(2)
+
+        avg_fit = np.mean(combo_fitness) if combo_fitness else float('inf')
+        print(f"  >>> Avg Fitness for this combo: {avg_fit:,.0f}")
+
+        res_row = dict(zip(ma_keys, combo))
+        res_row['Avg_Fitness'] = avg_fit
+        ma_results.append(res_row)
+
+        pd.DataFrame(ma_results).to_csv(ma_results_file, index=False)
+
+    df_ma = pd.DataFrame(ma_results)
+    best_ma_row = df_ma.loc[df_ma['Avg_Fitness'].idxmin()]
+
+    print("\n" + "=" * 70)
+    print(f"🏆 STAGE 1 COMPLETE. BEST MA PARAMS FOUND:")
+    for k in ma_keys:
+        val = best_ma_row[k]
+        # 🚨 核心修复：强制转回 Python 原生类型，防止 Pandas 浮点化导致 range() 报错
+        if k == 'POP_SIZE':
+            val = int(val)
+        else:
+            val = float(val)
+
+        print(f"   - {k}: {val}")
+        base_config[k] = val
+    print("=" * 70)
+
+    # ==========================================
+    # Stage 2: RL 参数调优
+    # ==========================================
+    rl_grid = {
+        'RL_LEARNING_RATE': [0.1, 0.2, 0.5],
+        'RL_DISCOUNT_FACTOR': [0.5, 0.8, 0.95],
+        'RL_TEMPERATURE': [0.1, 0.5, 1.0]
+    }
+
+    rl_keys = list(rl_grid.keys())
+    rl_combinations = list(itertools.product(*(rl_grid[k] for k in rl_keys)))
+
+    print(f"\n🚀 STAGE 2: RAPID RL Parameter Tuning | {len(rl_combinations)} Combinations")
+    print("=" * 70)
+
+    rl_results = []
+
+    for idx, combo in enumerate(rl_combinations):
+        current_config = base_config.copy()
+        for k, v in zip(rl_keys, combo):
+            current_config[k] = v
+
+        print(f"\n[RL {idx + 1}/{len(rl_combinations)}] Testing: {dict(zip(rl_keys, combo))}")
+
+        combo_fitness = []
+        for seed in range(1, num_seeds + 1):
+            seed_everything(42 + seed)
+            current_config['GLOBAL_SEED'] = 42 + seed
+
+            simulator = PassengerSimulator(network_env=network_env, config=current_config)
+            engine = GAEngine(config=current_config, network_env=network_env, simulator=simulator, mode='QL-MA')
+
+            best_ind, _, _, _, _, _, _ = engine.run()
+
+            if best_ind:
+                best_ind['frequencies'] = simulator.calculate_demand_responsive_frequencies(best_ind)
+                metrics = simulator.calculate_performance_metrics(simulator._prepare_network_data(best_ind))
+                combo_fitness.append(metrics['fitness'])
+
+            del simulator
+            del engine
+            gc.collect()
+            time.sleep(2)
+
+        avg_fit = np.mean(combo_fitness) if combo_fitness else float('inf')
+        print(f"  >>> Avg Fitness for this combo: {avg_fit:,.0f}")
+
+        res_row = dict(zip(rl_keys, combo))
+        res_row['Avg_Fitness'] = avg_fit
+        rl_results.append(res_row)
+
+        pd.DataFrame(rl_results).to_csv(rl_results_file, index=False)
+
+    df_rl = pd.DataFrame(rl_results)
+    best_rl_row = df_rl.loc[df_rl['Avg_Fitness'].idxmin()]
+
+    print("\n" + "=" * 70)
+    print("🎉 ALL TUNING COMPLETE! 🎉")
+    print("🏆 BEST RL PARAMS FOUND:")
+    for k in rl_keys:
+        val = float(best_rl_row[k])
+        print(f"   - {k}: {val}")
+    print(f"Results saved to: {output_dir}")
+    print("=" * 70)
+
+
+if __name__ == '__main__':
+    freeze_support()
+    run_grid_search()

@@ -1,5 +1,5 @@
 """
-Default configuration file for the ISA-MA BNDFS Project.
+Default configuration file for the QL-MA BNDFS Project.
 Contains all hyperparameters for the network environments, evolutionary engine, and XRL agent.
 Uses relative paths referencing the standardized './data/' directory.
 """
@@ -19,13 +19,6 @@ NETWORK_CONFIGS = {
         "max_fleet": 150,
         "max_stops": 20,
         "min_stops": 5
-    },
-    'mumford1': {
-        "path": "./data/mumford1",  # 70 nodes, large network
-        "num_routes": 15,  # Typically requires more routes
-        "max_fleet": 220,  # Expanded fleet size for broader coverage
-        "max_stops": 30,  # Allowed to traverse more nodes per route
-        "min_stops": 10  # Minimum required to avoid trivial short segments
     }
 }
 
@@ -33,16 +26,16 @@ NETWORK_CONFIGS = {
 CONFIG = {
     # --- 1. Global Setup ---
     'GLOBAL_SEED': 42,
-    'MAX_CPU_WORKERS': 9,             # For a 12-thread CPU, 9 workers push utilization to ~75%-85%
-    'MAX_TASKS_PER_CHILD': 150,       # Drastically reduces process restart overhead (restarts only every 150 tasks)
+    'MAX_CPU_WORKERS': 4,             # For a 12-thread CPU, 9 workers push utilization to ~75%-85%
+    'MAX_TASKS_PER_CHILD': 10,       # Drastically reduces process restart overhead (restarts only every 150 tasks)
     'EVAL_CHUNKSIZE': 3,              # Balances memory spikes and IPC overhead
 
     # --- 2. Evolutionary Engine Parameters ---
     'POP_SIZE': 30,
     'MAX_GENERATIONS': 500,
     'ELITISM_RATE': 0.1,
-    'CROSSOVER_RATE': 0.1,
-    'MUTATION_RATE': 0.1,  # Crucial for Standard GA baseline exploration
+    'CROSSOVER_RATE': 0.8,
+    'MUTATION_RATE': 0.2,  # Crucial for Standard GA baseline exploration
 
     # --- 3. Passenger Simulation Parameters ---
     'MAX_TRANSFERS': 2,
@@ -52,13 +45,13 @@ CONFIG = {
     'MIN_FREQUENCY': 2,
     'MAX_FREQUENCY': 99,
 
-    # --- 4. Reinforcement Learning (ISA-MA) Parameters ---
+    # --- 4. Reinforcement Learning (QL-MA) Parameters ---
     'RL_LEARNING_RATE': 0.2,
     'RL_DISCOUNT_FACTOR': 0.9,
     'RL_EPSILON_START': 1.0,
     'RL_EPSILON_END': 0.01,
     'RL_EPSILON_DECAY': 0.985,
-    'RL_STAGNATION_THRESHOLD': 0.01,
-    'RL_TEMPERATURE': 0.1,
-    'RL_DIVERSITY_THRESHOLD': 0.1
+    'RL_STAGNATION_THRESHOLD': 0.0001,
+    'RL_TEMPERATURE': 0.5,
+    'RL_DIVERSITY_THRESHOLD': 0.05
 }

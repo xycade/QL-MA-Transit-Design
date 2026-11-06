@@ -2,9 +2,9 @@ import numpy as np
 import random
 
 
-class ISAAgent:
+class qlAgent:
     """
-    Inherently Interpretable State-Aware (ISA) Meta-controller based on Tabular Q-Learning.
+    Q-learning based Memetic Algorithm (ql-MA).
     """
 
     def __init__(self, config: dict):
