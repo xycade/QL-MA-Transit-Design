@@ -21,13 +21,10 @@ class qlAgent:
         # Q-Table: 4 States x 4 Memetic Actions
         self.q_table = np.zeros((4, 4))
 
-    def get_state(self, is_stagnant: bool, diversity: float) -> int:
+    def get_state(self, is_stagnant: bool, is_div_high: bool) -> int:
         """
-        [Unified Stagnation Update]
-        Directly uses the boolean is_stagnant flag synchronized with the Early Stopping tracker.
+        根据停滞状态和动态相对多样性判定状态。
         """
-        is_div_high = diversity >= self.diversity_threshold
-
         if is_stagnant and is_div_high:
             return 0
         elif is_stagnant and not is_div_high:

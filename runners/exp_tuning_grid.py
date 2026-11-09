@@ -18,12 +18,12 @@ from core.ga_engine import GAEngine
 
 def run_grid_search():
     # ==========================================
-    # 🚀 极速调参实验配置 (侦察战模式)
+    # Fast Hyperparameter Tuning Configuration (Reconnaissance Mode)
     # ==========================================
     network = 'mumford0'
-    num_seeds = 2  # [提速] 从 3 降为 2，足以评估均值趋势
-    max_gens = 100  # [提速] 前 100 代足以看出参数潜力，无需跑到底
-    patience = 30  # [提速] 30代不下降直接淘汰这组参数
+    num_seeds = 2   # Reduced from 3 to 2 for acceleration; sufficient to estimate mean trends
+    max_gens = 100  # First 100 generations are sufficient to reveal parameter potential
+    patience = 30   # Early stop if no improvement in 30 generations to discard unpromising configurations
 
     output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'output', 'exp_tuning'))
     os.makedirs(output_dir, exist_ok=True)
@@ -47,16 +47,16 @@ def run_grid_search():
         'MIN_STOPS_PER_ROUTE': net_config['min_stops']
     })
 
-    # 网络环境只初始化一次，避免重复加载消耗内存
+    # Initialize transit network once to avoid repeated memory allocations
     network_env = TransitNetwork(base_path=base_config['BASE_PATH'])
 
     # ==========================================
-    # Stage 1: MA 参数调优
+    # Stage 1: Memetic Algorithm (MA) Parameter Tuning
     # ==========================================
     ma_grid = {
         'POP_SIZE': [30, 50, 80],
         'CROSSOVER_RATE': [0.7, 0.8, 0.9],
-        'MUTATION_RATE': [0.1, 0.2, 0.3]  # 🚨 完整保留 27 个组合
+        'MUTATION_RATE': [0.1, 0.2, 0.3]  # All 27 parameter combinations evaluated
     }
 
     ma_keys = list(ma_grid.keys())
@@ -109,10 +109,10 @@ def run_grid_search():
     best_ma_row = df_ma.loc[df_ma['Avg_Fitness'].idxmin()]
 
     print("\n" + "=" * 70)
-    print(f"🏆 STAGE 1 COMPLETE. BEST MA PARAMS FOUND:")
+    print("🏆 STAGE 1 COMPLETE. BEST MA PARAMS FOUND:")
     for k in ma_keys:
         val = best_ma_row[k]
-        # 🚨 核心修复：强制转回 Python 原生类型，防止 Pandas 浮点化导致 range() 报错
+        # Cast back to native Python types to avoid errors when Pandas converts integers to floats
         if k == 'POP_SIZE':
             val = int(val)
         else:
@@ -123,7 +123,7 @@ def run_grid_search():
     print("=" * 70)
 
     # ==========================================
-    # Stage 2: RL 参数调优
+    # Stage 2: Reinforcement Learning (RL) Parameter Tuning
     # ==========================================
     rl_grid = {
         'RL_LEARNING_RATE': [0.1, 0.2, 0.5],

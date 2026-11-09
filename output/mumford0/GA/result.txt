@@ -1,0 +1,26 @@
+============================================================
+🎯 FINAL OPTIMIZATION REPORT
+============================================================
+➤ Final Fitness Score:       7,068,704.96
+➤ Total Passenger Time Cost: 7,068,704.96 min
+➤ Demand Satisfaction Rate:  342160 / 342160 (100.00%)
+
+📊 Passenger Transfer Breakdown:
+  - 0 Transfers (Direct):    152580 pax (44.59%)
+  - 1 Transfer:              189360 pax (55.34%)
+  - 2 Transfers:             220 pax (0.06%)
+
+🚌 Optimized Bus Routes Topology:
+  [Route 1] (Freq: 13 buses/hr): 30 -> 28 -> 17 -> 29 -> 18 -> 20 -> 9
+  [Route 2] (Freq: 12 buses/hr): 3 -> 17 -> 29 -> 1 -> 23 -> 13 -> 18 -> 12 -> 15 -> 25
+  [Route 3] (Freq: 17 buses/hr): 19 -> 1 -> 23 -> 26 -> 8 -> 21 -> 15 -> 4
+  [Route 4] (Freq: 12 buses/hr): 9 -> 13 -> 1 -> 29 -> 17 -> 11
+  [Route 5] (Freq: 11 buses/hr): 2 -> 5 -> 4 -> 12 -> 18 -> 20 -> 9
+  [Route 6] (Freq: 13 buses/hr): 25 -> 5 -> 8 -> 17 -> 7 -> 14 -> 1 -> 18
+  [Route 7] (Freq: 15 buses/hr): 10 -> 2 -> 4 -> 12 -> 26 -> 29 -> 17 -> 16
+  [Route 8] (Freq: 11 buses/hr): 27 -> 1 -> 14 -> 7 -> 22
+  [Route 9] (Freq: 13 buses/hr): 10 -> 15 -> 8 -> 17 -> 28 -> 16
+  [Route 10] (Freq: 12 buses/hr): 2 -> 15 -> 8 -> 28 -> 30
+  [Route 11] (Freq: 12 buses/hr): 6 -> 7 -> 17 -> 8 -> 21 -> 24 -> 15 -> 12 -> 18 -> 1 -> 20
+  [Route 12] (Freq: 10 buses/hr): 3 -> 7 -> 22 -> 11 -> 28 -> 8 -> 29 -> 1 -> 27
+============================================================

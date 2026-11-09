@@ -1,0 +1,32 @@
+============================================================
+🎯 FINAL OPTIMIZATION REPORT
+============================================================
+➤ Final Fitness Score:       6,473,514.96
+➤ Converged Generation:      500 / 500 (Patience: 150)
+➤ Total Passenger Time Cost: 6,473,514.96 min
+➤ Demand Satisfaction Rate:  342160 / 342160 (100.00%)
+
+📊 Passenger Transfer Breakdown:
+  - 0 Transfers (Direct):    223880 pax (65.43%)
+  - 1 Transfer:              118190 pax (34.54%)
+  - 2 Transfers:             90 pax (0.03%)
+
+🚌 Optimized Bus Routes Topology:
+  [Route 1] (Freq: 12 buses/hr): 27 -> 1 -> 26 -> 8 -> 25 -> 5
+  [Route 2] (Freq: 11 buses/hr): 3 -> 8 -> 26 -> 23 -> 20 -> 13
+  [Route 3] (Freq: 14 buses/hr): 2 -> 10 -> 4 -> 12 -> 18 -> 23 -> 1 -> 19 -> 14 -> 7 -> 6 -> 22
+  [Route 4] (Freq: 12 buses/hr): 14 -> 19 -> 1 -> 26 -> 8 -> 21 -> 24 -> 4 -> 2 -> 5
+  [Route 5] (Freq: 14 buses/hr): 6 -> 7 -> 17 -> 8 -> 15 -> 24 -> 10 -> 4 -> 2
+  [Route 6] (Freq: 12 buses/hr): 30 -> 28 -> 8 -> 29 -> 18 -> 20 -> 9 -> 13 -> 19
+  [Route 7] (Freq: 11 buses/hr): 4 -> 2 -> 15 -> 8 -> 11 -> 22
+  [Route 8] (Freq: 11 buses/hr): 30 -> 28 -> 8 -> 15 -> 12
+  [Route 9] (Freq: 12 buses/hr): 20 -> 13 -> 1 -> 14 -> 7 -> 16 -> 11 -> 28 -> 8 -> 5 -> 21
+  [Route 10] (Freq: 13 buses/hr): 23 -> 1 -> 29 -> 17 -> 28 -> 30 -> 3 -> 16 -> 22
+  [Route 11] (Freq: 11 buses/hr): 16 -> 6 -> 22 -> 7 -> 17 -> 29 -> 26 -> 12
+  [Route 12] (Freq: 13 buses/hr): 25 -> 2 -> 24 -> 15 -> 12 -> 18 -> 20 -> 13
+
+⏱️ Computational Overhead:
+  - Evaluation Time:  907.94 s
+  - Memetic Ops Time: 9.15 s
+  - RL Agent Time:    0.77 s
+============================================================

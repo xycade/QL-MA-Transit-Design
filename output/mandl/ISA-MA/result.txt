@@ -1,0 +1,24 @@
+============================================================
+🎯 FINAL OPTIMIZATION REPORT
+============================================================
+➤ Final Fitness Score:       185,983.70
+➤ Converged Generation:      179 / 500 (Patience: 150)
+➤ Total Passenger Time Cost: 185,983.70 min
+➤ Demand Satisfaction Rate:  15570 / 15570 (100.00%)
+
+📊 Passenger Transfer Breakdown:
+  - 0 Transfers (Direct):    13960 pax (89.66%)
+  - 1 Transfer:              1610 pax (10.34%)
+  - 2 Transfers:             0 pax (0.00%)
+
+🚌 Optimized Bus Routes Topology:
+  [Route 1] (Freq: 13 buses/hr): 6 -> 15 -> 9
+  [Route 2] (Freq: 12 buses/hr): 5 -> 2 -> 4 -> 12
+  [Route 3] (Freq: 38 buses/hr): 5 -> 4 -> 6 -> 8 -> 10 -> 11 -> 13 -> 14
+  [Route 4] (Freq: 35 buses/hr): 1 -> 2 -> 3 -> 6 -> 8 -> 15 -> 7 -> 10 -> 11 -> 12
+
+⏱️ Computational Overhead:
+  - Evaluation Time:  35.60 s
+  - Memetic Ops Time: 0.96 s
+  - RL Agent Time:    0.11 s
+============================================================

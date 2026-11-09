@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="ac256a0e-6deb-497a-9a8b-9ffc1654880b" name="更改" comment="Initial commit: Official implementation and reproducibility logs for QL-MA framework." />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.2648999695914482" />
+      <entry key="MS500" value="2.2449759983539406" />
+      <entry key="S2" value="5.2769749581599275" />
+      <entry key="S5" value="9.241694933496742" />
+      <entry key="S10" value="12.18552131713294" />
+      <entry key="S30" value="15.115335436083086" />
+      <entry key="S60" value="16.016817789621243" />
+      <entry key="M2" value="16.50401627334032" />
+      <entry key="M5" value="17.67464358164091" />
+      <entry key="M10" value="22.41953613420011" />
+      <entry key="M15" value="28.09050215860207" />
+      <entry key="M30" value="43.52178790322533" />
+      <entry key="H1" value="64.2945296495761" />
+      <entry key="H2" value="84.08539014400837" />
+      <entry key="H4" value="98.7504449815152" />
+      <entry key="D1" value="180.05849758260214" />
+      <entry key="W1" value="467.4721409714517" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="0.0" />
+      <entry key="S60" value="0.0" />
+      <entry key="M2" value="0.0" />
+      <entry key="M5" value="9.858508943245946E-177" />
+      <entry key="M10" value="9.929002438939127E-89" />
+      <entry key="M15" value="2.144225278169054E-59" />
+      <entry key="M30" value="4.6305780194369414E-30" />
+      <entry key="H1" value="2.1519143832840614E-15" />
+      <entry key="H2" value="4.657963352253599E-8" />
+      <entry key="H4" value="2.2921052471384386E-4" />
+      <entry key="D1" value="0.39976397810969166" />
+      <entry key="W1" value="1.5840271420483776" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="1.2388654861538622" />
+      <entry key="MS500" value="2.2350844632161615" />
+      <entry key="S2" value="5.26953488920262" />
+      <entry key="S5" value="9.235671737257178" />
+      <entry key="S10" value="12.181328012715705" />
+      <entry key="S30" value="15.113538506333796" />
+      <entry key="S60" value="16.01585739545248" />
+      <entry key="M2" value="16.503519334181593" />
+      <entry key="M5" value="17.674430687942028" />
+      <entry key="M10" value="22.41939114765606" />
+      <entry key="M15" value="28.090342679723758" />
+      <entry key="M30" value="43.5215464643441" />
+      <entry key="H1" value="64.29426636788136" />
+      <entry key="H2" value="84.08518693368694" />
+      <entry key="H4" value="98.75054459989175" />
+      <entry key="D1" value="180.4581777125421" />
+      <entry key="W1" value="469.0561379771006" />
+    </decayedShown>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="3LZBmj0xKyQXWTZYIlaRNsFYfpG" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;E:/code/QL_MA_Project&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.jshint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.jshint&quot;: &quot;&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;python.packages.toolwindow.project.migrated.to.right.top.v2&quot;: &quot;true&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-PY-262.10968.92" />
+        <option value="bundled-python-sdk-73a66231627c-5bd6d13a2a75-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-262.10968.92" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="ac256a0e-6deb-497a-9a8b-9ffc1654880b" name="更改" comment="" />
+      <created>1793651872172</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1793651872172</updated>
+      <workItem from="1793651874585" duration="30943000" />
+      <workItem from="1793852268575" duration="17389000" />
+      <workItem from="1793897688655" duration="2159000" />
+      <workItem from="1793900158182" duration="9073000" />
+      <workItem from="1793918307746" duration="13517000" />
+      <workItem from="1793960587697" duration="10010000" />
+      <workItem from="1793985481593" duration="4939000" />
+      <workItem from="1794006325592" duration="45106000" />
+      <workItem from="1794132905610" duration="37089000" />
+    </task>
+    <task id="LOCAL-00001" summary="2026/11/7">
+      <option name="closed" value="true" />
+      <created>1793986195934</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1793986195934</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Initial commit: Official implementation and reproducibility logs for QL-MA framework.">
+      <option name="closed" value="true" />
+      <created>1794226693160</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1794226693160</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="2026/11/7" />
+    <MESSAGE value="Initial commit: Official implementation and reproducibility logs for QL-MA framework." />
+    <option name="LAST_COMMIT_MESSAGE" value="Initial commit: Official implementation and reproducibility logs for QL-MA framework." />
+  </component>
+</project>

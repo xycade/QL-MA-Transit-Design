@@ -44,8 +44,8 @@ def fast_copy(ind: dict) -> dict:
 
 class GAEngine:
     """
-    Multi-mode Evolutionary Engine integrating GA, MA-Random, MA-Fixed, and QL-MA.
-    (Optimized for Extreme Performance, Memory Safety, and Accurate Profiling)
+    Multi-mode Evolutionary Engine integrating GA, RMA, SMA, and QL-MA.
+    (Optimized for Extreme Performance, Memory Safety, and Absolute MDP Auditability)
     """
 
     def __init__(self, config: dict, network_env, simulator, mode: str = 'QL-MA'):
@@ -76,7 +76,11 @@ class GAEngine:
         self.q_snapshots = {}
         # ⏱️ 耗时统计初始化
         self.timings = {'eval_time': 0.0, 'op_time': 0.0, 'rl_time': 0.0}
+
+        # 🚨 动态状态感知的关键变量
         self._last_cv = 0.0
+        self.cv_history = []
+        self.current_dynamic_threshold = 0.0
 
     def _initialize_population(self) -> List[dict]:
         population = []
@@ -162,7 +166,7 @@ class GAEngine:
 
                     if reference_best_fitness != float('inf'):
                         rel_improvement = (reference_best_fitness - current_best_fitness) / (
-                                    reference_best_fitness + 1e-9)
+                                reference_best_fitness + 1e-9)
                         if rel_improvement > 1e-5:
                             reference_best_fitness = current_best_fitness
                             stagnation_count = 0
@@ -176,14 +180,23 @@ class GAEngine:
                         break
 
                     # -----------------------------------------------------
-                    # ⏱️ RL耗时：RL 状态感知
+                    # ⏱️ RL耗时：RL 当前状态感知 (Current State)
                     # -----------------------------------------------------
                     t_rl_start = time.perf_counter()
                     current_state = -1
                     if self.agent:
-                        diversity = self._calculate_diversity(population)
+                        # 维护 CV 历史并计算动态阈值
+                        current_cv = self._last_cv
+                        self.cv_history.append(current_cv)
+                        self.current_dynamic_threshold = np.mean(self.cv_history[-50:])
+
+                        # 获取当前布尔状态
+                        is_div_high = current_cv >= self.current_dynamic_threshold
                         is_stagnant = (stagnation_count >= 10)
-                        current_state = self.agent.get_state(is_stagnant, diversity)
+
+                        current_state = self.agent.get_state(is_stagnant, is_div_high)
+
+                        # 记录 XAI 的 Q 表快照
                         if gen in [10, 50, 100, 250, 499] or gen == self.max_generations - 1:
                             q_snaps[f"Gen_{gen}"] = self.agent.q_table.copy().tolist()
                     self.timings['rl_time'] += time.perf_counter() - t_rl_start
@@ -219,14 +232,14 @@ class GAEngine:
                     best_ind_before = population[best_idx_before]
 
                     for child in offspring_pool:
+                        # 🚨 兼容 RMA 和 SMA 学术新命名，同时保留 GA 基础变异
                         if self.mode == 'QL-MA' and self.agent:
                             action = self.agent.choose_action(current_state)
-                        elif self.mode == 'MA-Random':
+                        elif self.mode in ['MA-Random', 'RMA']:
                             action = np.random.randint(0, 4)
-                        elif self.mode == 'MA-Fixed':
+                        elif self.mode in ['MA-Fixed', 'SMA']:
                             action = 0
                         elif self.mode == 'GA':
-                            # [🚨 逻辑修复：赋予纯 GA 基础变异能力]
                             if random.random() < self.mutation_rate:
                                 action = np.random.randint(1, 4)
                             else:
@@ -236,6 +249,7 @@ class GAEngine:
 
                         actions_chosen.append(action)
 
+                        # XAI 微观切片捕捉
                         if self.mode == 'QL-MA' and self.agent and current_state == 1 and action == 3 and gen > 100 and not micro_slice_triggered:
                             def routes_to_edges(routes):
                                 edges = set()
@@ -279,12 +293,13 @@ class GAEngine:
                         for i in range(len(refined_offspring)):
                             rel_imp = (fitnesses_before[i] - fitnesses_after[i]) / (fitnesses_before[i] + 1e-6)
                             reward = np.tanh(rel_imp * 100.0)
+                            # 形状奖励：停滞时鼓励探索
                             if current_state in [0, 1]:
                                 reward += 0.2 if actions_chosen[i] != 0 else -0.2
                             transitions.append((current_state, actions_chosen[i], reward))
                         avg_reward = np.mean([t[2] for t in transitions]) if transitions else 0.0
 
-                    # 🚀 提速优化 3：直接利用已知精英适应度，砍掉冗余的第3次 pool.map
+                    # 🚀 直接利用已知精英适应度，砍掉冗余评价
                     num_elites = max(1, int(self.pop_size * self.elitism_rate))
                     elite_indices = np.argsort(fitnesses)[:num_elites]
 
@@ -296,16 +311,33 @@ class GAEngine:
 
                     self._last_cv = np.std(fitnesses) / (np.mean(fitnesses) + 1e-6)
 
-                    # RL 状态转移与日志更新
+                    # -----------------------------------------------------
+                    # 🚨 核心修复：RL 未来状态预测 (Next State) 与完美 MDP 闭环
+                    # -----------------------------------------------------
                     if self.agent:
-                        next_diversity = self._calculate_diversity(population)
-                        next_is_stagnant = (stagnation_count >= 10)
-                        next_state = self.agent.get_state(next_is_stagnant, next_diversity)
+                        # 1. 精确推演 Next Diversity 布尔值 (必须使用和开头同一把尺子)
+                        next_is_div_high = self._last_cv >= self.current_dynamic_threshold
 
+                        # 2. 精确推演 Next Stagnation 布尔值
+                        next_best_fitness = np.min(fitnesses)
+                        temp_stagnation = stagnation_count
+                        if reference_best_fitness != float('inf'):
+                            rel_imp = (reference_best_fitness - next_best_fitness) / (reference_best_fitness + 1e-9)
+                            if rel_imp > 1e-5:
+                                temp_stagnation = 0
+                            else:
+                                temp_stagnation += 1
+                        next_is_stagnant = (temp_stagnation >= 10)
+
+                        # 3. 获取毫无误差的 Next State
+                        next_state = self.agent.get_state(next_is_stagnant, next_is_div_high)
+
+                        # 更新 Q-Table
                         for s, a, r in transitions:
                             self.agent.learn(s, a, r, next_state)
                         self.agent.step_decay(next_state)
 
+                        # 记录 MDP 日志
                         maj_action = max(set(actions_chosen), key=actions_chosen.count) if actions_chosen else -1
                         op_hist.append({
                             'Generation': gen,
@@ -320,7 +352,7 @@ class GAEngine:
                     # -----------------------------------------------------
                     # 进度条展示与更新
                     # -----------------------------------------------------
-                    display_div = self._calculate_diversity(population) if self.agent else 0.0
+                    display_div = self._last_cv if self.agent else 0.0
                     pbar.set_postfix({
                         'Fit': f"{current_best_fitness:,.0f}",
                         'Stag': f"{stagnation_count}/{self.patience}",
