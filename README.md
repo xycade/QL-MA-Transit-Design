@@ -29,20 +29,24 @@ cd QL-MA-Transit-Design
 
 # Install dependencies (strictly version-locked)
 pip install -r requirements.txt
+
 🚀 How to Reproduce the Experiments
 1. Benchmark Testing (Mandl & Mumford0)
 To reproduce the optimization results, structural feasibility, and convergence tracking (Section 5). This script automatically aggregates 20 independent seeds.
 
 python runners/run_benchmark.py
 Note: The script utilizes safe multi-processing and supports breakpoint continuation. Results (Fitness metrics, topologies, and XAI logs) will be automatically saved to output/exp_benchmark/.
+
 2. Real-world Case Study (HXUT)
 To reproduce the Huaxi University Town micro-transit optimization (Section 7):
 
 python runners/run_casestudy_hxut.py
+
 3. Causal Verification: Counterfactual Intervention
 To strictly prove the agent's causal reasoning without contaminating the main benchmark engine, we utilize a physically isolated engine (core/counterfactual_engine.py). This engine artificially executes a 'Clone Injection' at Generation 250 to force a diversity crash (Section 6.5).
 
 python runners/run_counterfactual.py
+
 4. Generate Manuscript Figures (Automated Analysis)
 To verify that all plots and analytical conclusions in the manuscript are rigorously derived from the raw experimental data, we provide a suite of independent visualization scripts in the analysis/ folder.
 📊 Section 5: Optimization Performance
