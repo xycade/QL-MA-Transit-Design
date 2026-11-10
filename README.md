@@ -45,3 +45,45 @@ Executes a two-stage grid search to calibrate the memetic infrastructure and RL 
 ```bash
 python runners/exp_tuning_grid.py
 
+### Phase 2: Benchmark Network Testing (Manuscript Section 5)
+Evaluates QL-MA against traditional baselines (SGA, RMA, SMA) on the Mandl and Mumford0 networks across 20 independent seeds.
+```bash
+python runners/run_benchmark.py
+
+### Phase 3: Real-World Case Study (Manuscript Section 7)
+Applies QL-MA to optimize the micro-transit network of Huaxi University Town (HXUT) under realistic physical constraints.
+```bash
+python runners/run_casestudy_hxut.py
+
+### Phase 4: Counterfactual Intervention (Manuscript Section 6.5)
+To strictly prove the agent's causal reasoning without contaminating the main benchmark engine, this script utilizes the isolated counterfactual_engine.py to artificially force a diversity crash at Generation 250.
+```bash
+python runners/run_counterfactual.py
+
+## 📊 Fast-track XAI Auditing (Generate Manuscript Figures)
+Note for Reviewers: To facilitate the review process, all raw execution logs from the 4 phases have been pre-computed and stored in the output/ directory. You can directly execute the scripts below to independently verify and generate the exact high-resolution PDF figures presented in the manuscript. All generated figures will be saved in output/analysis_results/.
+
+### Section 5: Optimization Performance
+```bash
+# Generates Table 2 metrics and Figure 5 (Convergence Trajectories with 95% CI)
+python analysis/plot_5_benchmark.py
+
+### Section 6 & 7: Interpretability Analysis (XAI) & Case Study
+```bash
+# Figure 6: Semantic State Space Deconstruction (State densities and consensus actions)
+python analysis/plot_6_1_state_space.py
+
+# Figure 7: Policy Determinism Heatmap (Softmax empirical action preferences)
+python analysis/plot_6_2_q_table.py
+
+# Figure 8: Value-Function Causality Tracing (Markov Transition Graphs)
+python analysis/plot_6_3_markov_graph.py
+
+# Figure 9: Physical Topology Validation (Micro-slices on the Mandl network)
+python analysis/plot_6_4_mandl_topology.py
+
+# Figure 10: Counterfactual Intervention Raster Plot (Neuromorphic spike in A3 Explorer)
+python analysis/plot_6_5_counterfactual.py
+
+# Parses the best route configuration of HXUT for GIS mapping (Section 7)
+python analysis/parse_7_gis.py
